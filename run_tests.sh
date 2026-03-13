@@ -10,7 +10,7 @@ AUTH_RESP="$(mktemp)"
 SCHEMA_FILE="./pb_schema_for_tests.json"
 
 PB_ADMIN_EMAIL="${PB_ADMIN_EMAIL:-test_admin@example.com}"
-PB_ADMIN_PASSWORD="${PB_ADMIN_PASSWORD:-test_admin_password}"
+PB_ADMIN_PASSWORD="${PB_ADMIN_PASSWORD:-password}"
 
 if [[ ! -x "$PB_BIN" ]]; then
   echo "PocketBase binary not found at $PB_BIN; downloading from release zip..."

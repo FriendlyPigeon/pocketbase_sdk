@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/fetch
+import gleam/http/request
 import gleam/javascript/promise
 import gleam/list
 import gleam/string
@@ -275,8 +276,6 @@ pub fn post_collection_auth_with_valid_password_then_get_users_test() {
     |> collection.collection("users")
     |> collection.auth_with_password("test@example.com", "password")
 
-  echo req
-
   let auth_decoder = {
     use avatar <- decode.field("avatar", decode.string)
     use created <- decode.field("created", decode.string)
@@ -289,7 +288,7 @@ pub fn post_collection_auth_with_valid_password_then_get_users_test() {
 
   fetch.send(req)
   |> promise.try_await(fetch.read_json_body)
-  |> promise.map(fn(result) {
+  |> promise.await(fn(result) {
     case result {
       Ok(res) -> {
         case collection.decode_auth(res, auth_decoder) {
@@ -297,20 +296,20 @@ pub fn post_collection_auth_with_valid_password_then_get_users_test() {
             assert auth.token != ""
             assert auth.record.email == "test@example.com"
 
-            let req =
-              pb
+            let pb2 = pb |> pocketbase.auth(auth.token)
+
+            let req2 =
+              pb2
               |> collection.collection("users")
               |> collection.page(1)
               |> collection.per_page(20)
 
-            echo req
-
-            fetch.send(req)
+            fetch.send(req2)
             |> promise.try_await(fetch.read_json_body)
-            |> promise.map(fn(result) {
-              case result {
-                Ok(res) -> {
-                  case collection.decode_list(res, auth_decoder) {
+            |> promise.map(fn(result2) {
+              case result2 {
+                Ok(res2) -> {
+                  case collection.decode_list(res2, auth_decoder) {
                     Ok(PbRecords(page:, total_items:, items:, ..)) -> {
                       assert page == 1
                       assert total_items == 1

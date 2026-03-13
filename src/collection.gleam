@@ -7,9 +7,10 @@ import gleam/http/response.{type Response}
 import gleam/int
 import gleam/json
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 
-import pocketbase.{type PocketBase}
+import pocketbase.{type PocketBase, AuthStore}
 
 pub type PbRecords(a) {
   PbRecords(
@@ -96,7 +97,13 @@ fn build_base_request(pb: PocketBase, url: String, method: Method) {
 pub fn collection_request(pb: PocketBase, name: String) -> Request(String) {
   let url = "/api/collections/" <> name <> "/records"
 
-  build_base_request(pb, url, Get)
+  let req = build_base_request(pb, url, Get)
+
+  case pb.auth_store {
+    None -> req
+    Some(AuthStore(token)) ->
+      request.set_header(req, "Authorization", "Bearer " <> token)
+  }
 }
 
 pub fn auth_with_password(

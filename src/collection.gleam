@@ -68,6 +68,13 @@ pub fn update(req: Request(String), record_id: String, json_body: String) {
   |> request.set_path(req.path <> "/" <> record_id)
 }
 
+pub fn delete(req: Request(String), record_id: String, json_body: String) {
+  request.set_method(req, http.Delete)
+  |> request.set_body(json_body)
+  |> request.set_header("content-type", "application/json")
+  |> request.set_path(req.path <> "/" <> record_id)
+}
+
 pub fn collection(pb: PocketBase, name: String) {
   collection_request(pb, name)
 }

@@ -419,6 +419,31 @@ pub fn patch_collection_update_record_test() {
   })
 }
 
+pub fn delete_collection_delete_record_test() {
+  let pb =
+    pocketbase.new(base_url)
+    |> pocketbase.https(False)
+    |> pocketbase.port(8090)
+
+  let body = json.to_string(json.object([]))
+
+  let req =
+    pb
+    |> collection.collection("animals")
+    |> collection.delete("p7m2ga6mbkciygd", body)
+
+  fetch.send(req)
+  |> promise.try_await(fetch.read_json_body)
+  |> promise.map(fn(result) {
+    case result {
+      Ok(res) -> {
+        assert res.status == 204
+      }
+      Error(_) -> panic as "fetch failed in delete test"
+    }
+  })
+}
+
 pub fn post_collection_auth_with_invalid_password_test() {
   let pb =
     pocketbase.new(base_url)

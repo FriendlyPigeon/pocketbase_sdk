@@ -218,7 +218,53 @@ pub fn get_collection_one_valid_test() {
   })
 }
 
-pub fn post_collection_auth_with_valid_password_test() {
+pub fn get_collection_users_list_none_unauthenticated_test() {
+  let pb =
+    pocketbase.new(base_url)
+    |> pocketbase.https(False)
+    |> pocketbase.port(8090)
+
+  let req =
+    pb
+    |> collection.collection("users")
+    |> collection.list(1, 50)
+
+  let user_decoder = {
+    use email <- decode.field("email", decode.string)
+    decode.success(User(
+      id: "",
+      name: "",
+      email: email,
+      created: "",
+      updated: "",
+      avatar: "",
+    ))
+  }
+
+  fetch.send(req)
+  |> promise.try_await(fetch.read_json_body)
+  |> promise.map(fn(result) {
+    case result {
+      Ok(res) ->
+        case collection.decode_list(res, user_decoder) {
+          Ok(PbRecords(page:, total_items:, items:, ..)) -> {
+            assert page == 1
+            assert total_items == 0
+            case list.first(items) {
+              Ok(_first_item) -> {
+                panic as "expected 0 items, found some"
+              }
+              Error(Nil) -> Nil
+            }
+          }
+          Error(_) -> panic as "failed to decode"
+        }
+      Error(_) -> panic as "fetch failed"
+    }
+  })
+}
+
+pub fn post_collection_auth_with_valid_password_then_get_users_test() {
   let pb =
     pocketbase.new(base_url)
     |> pocketbase.https(False)
@@ -228,6 +274,8 @@ pub fn post_collection_auth_with_valid_password_test() {
     pb
     |> collection.collection("users")
     |> collection.auth_with_password("test@example.com", "password")
+
+  echo req
 
   let auth_decoder = {
     use avatar <- decode.field("avatar", decode.string)
@@ -248,6 +296,49 @@ pub fn post_collection_auth_with_valid_password_test() {
           Ok(auth) -> {
             assert auth.token != ""
             assert auth.record.email == "test@example.com"
+
+            let req =
+              pb
+              |> collection.collection("users")
+              |> collection.page(1)
+              |> collection.per_page(20)
+
+            echo req
+
+            fetch.send(req)
+            |> promise.try_await(fetch.read_json_body)
+            |> promise.map(fn(result) {
+              case result {
+                Ok(res) -> {
+                  case collection.decode_list(res, auth_decoder) {
+                    Ok(PbRecords(page:, total_items:, items:, ..)) -> {
+                      assert page == 1
+                      assert total_items == 1
+                      case list.first(items) {
+                        Ok(first_item) -> {
+                          assert first_item
+                            == User(
+                              id: auth.record.id,
+                              name: auth.record.name,
+                              email: auth.record.email,
+                              created: auth.record.created,
+                              updated: auth.record.updated,
+                              avatar: auth.record.avatar,
+                            )
+                        }
+
+                        Error(Nil) -> panic as "expected 1 item, found none"
+                      }
+                    }
+
+                    Error(_) ->
+                      panic as "failed to decode post auth collection list"
+                  }
+                }
+
+                Error(_) -> panic as "fetch failed in test"
+              }
+            })
           }
           Error(AuthError(status: _, message:)) ->
             panic as { "auth failed: " <> message }

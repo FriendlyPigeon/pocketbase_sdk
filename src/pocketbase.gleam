@@ -1,9 +1,8 @@
-import gleam/dynamic.{type Dynamic}
 import gleam/http
 import gleam/option.{type Option, None, Some}
 
 pub type AuthStore {
-  AuthStore(token: String, record: Dynamic)
+  AuthStore(token: String)
 }
 
 pub type PocketBase {
@@ -30,6 +29,6 @@ pub fn https(pb: PocketBase, https: Bool) {
   }
 }
 
-pub fn auth(pb: PocketBase, token: String, record: Dynamic) {
-  PocketBase(..pb, auth_store: Some(AuthStore(token, record)))
+pub fn auth(pb: PocketBase, token: String) {
+  PocketBase(..pb, auth_store: Some(AuthStore(token)))
 }

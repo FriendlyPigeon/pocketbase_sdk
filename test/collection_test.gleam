@@ -1,7 +1,7 @@
 import gleam/dynamic/decode
 import gleam/fetch
-import gleam/http/request
 import gleam/javascript/promise
+import gleam/json
 import gleam/list
 import gleam/string
 
@@ -345,6 +345,76 @@ pub fn post_collection_auth_with_valid_password_then_get_users_test() {
       }
 
       Error(_) -> panic as "auth post failed in test"
+    }
+  })
+}
+
+pub fn post_collection_create_record_test() {
+  let pb =
+    pocketbase.new(base_url)
+    |> pocketbase.https(False)
+    |> pocketbase.port(8090)
+
+  let body = json.to_string(json.object([#("name", json.string("elephant"))]))
+
+  let req =
+    pb
+    |> collection.collection("animals")
+    |> collection.create(body)
+
+  let animal_decoder = {
+    use name <- decode.field("name", decode.string)
+    decode.success(Animal(name))
+  }
+
+  fetch.send(req)
+  |> promise.try_await(fetch.read_json_body)
+  |> promise.map(fn(result) {
+    case result {
+      Ok(res) -> {
+        case collection.decode_one(res, animal_decoder) {
+          Ok(animal) -> {
+            assert animal == Animal(name: "elephant")
+          }
+          Error(_) -> panic as "failed to decode created animal"
+        }
+      }
+      Error(_) -> panic as "fetch failed in create test"
+    }
+  })
+}
+
+pub fn patch_collection_update_record_test() {
+  let pb =
+    pocketbase.new(base_url)
+    |> pocketbase.https(False)
+    |> pocketbase.port(8090)
+
+  let body = json.to_string(json.object([#("name", json.string("giraffe"))]))
+
+  let req =
+    pb
+    |> collection.collection("animals")
+    |> collection.update("p7m2ga6mbkciygd", body)
+
+  let animal_decoder = {
+    use name <- decode.field("name", decode.string)
+    decode.success(Animal(name))
+  }
+
+  fetch.send(req)
+  |> promise.try_await(fetch.read_json_body)
+  |> promise.map(fn(result) {
+    case result {
+      Ok(res) -> {
+        case collection.decode_one(res, animal_decoder) {
+          Ok(animal) -> {
+            assert animal == Animal(name: "giraffe")
+          }
+          Error(_) -> panic as "failed to decode updated animal"
+        }
+      }
+      Error(_) -> panic as "fetch failed in update test"
     }
   })
 }

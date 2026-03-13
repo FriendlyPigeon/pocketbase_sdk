@@ -1,4 +1,3 @@
-import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode.{type Decoder}
 import gleam/http.{type Method, Get, Post}
@@ -56,9 +55,17 @@ pub fn one(req: Request(String), record_id: String) {
   request.set_path(req, req.path <> "/" <> record_id)
 }
 
-pub fn create(req: Request(String), body: Dict(String, Dynamic)) {
+pub fn create(req: Request(String), json_body: String) {
   request.set_method(req, Post)
-  |> request.set_body(body)
+  |> request.set_body(json_body)
+  |> request.set_header("content-type", "application/json")
+}
+
+pub fn update(req: Request(String), record_id: String, json_body: String) {
+  request.set_method(req, http.Patch)
+  |> request.set_body(json_body)
+  |> request.set_header("content-type", "application/json")
+  |> request.set_path(req.path <> "/" <> record_id)
 }
 
 pub fn collection(pb: PocketBase, name: String) {

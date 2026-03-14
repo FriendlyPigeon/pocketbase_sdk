@@ -29,11 +29,22 @@ pub type AuthError {
   AuthError(status: Int, message: String)
 }
 
+pub type RecordSubscription
+
 pub fn decode_one(
   res: Response(Dynamic),
   decoder: Decoder(a),
 ) -> Result(a, List(decode.DecodeError)) {
   decode.run(res.body, decoder)
+}
+
+pub fn record_list_decoder(item_decoder: Decoder(a)) -> Decoder(PbRecords(a)) {
+  use page <- decode.field("page", decode.int)
+  use per_page <- decode.field("perPage", decode.int)
+  use total_items <- decode.field("totalItems", decode.int)
+  use total_pages <- decode.field("totalPages", decode.int)
+  use items <- decode.field("items", decode.list(item_decoder))
+  decode.success(PbRecords(page, per_page, total_items, total_pages, items))
 }
 
 pub fn decode_list(
@@ -73,6 +84,10 @@ pub fn delete(req: Request(String), record_id: String, json_body: String) {
   |> request.set_body(json_body)
   |> request.set_header("content-type", "application/json")
   |> request.set_path(req.path <> "/" <> record_id)
+}
+
+pub fn subscribe(req: Request(String), callback) {
+  todo
 }
 
 pub fn collection(pb: PocketBase, name: String) {

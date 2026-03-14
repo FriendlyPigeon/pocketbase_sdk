@@ -433,7 +433,6 @@ pub fn delete_collection_delete_record_test() {
     |> collection.delete("p7m2ga6mbkciygd", body)
 
   fetch.send(req)
-  |> promise.try_await(fetch.read_json_body)
   |> promise.map(fn(result) {
     case result {
       Ok(res) -> {

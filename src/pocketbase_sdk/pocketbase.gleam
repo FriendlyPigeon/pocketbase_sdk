@@ -1,24 +1,25 @@
-import gleam/dynamic.{type Dynamic}
-import gleam/dynamic/decode.{type Decoder}
-import gleam/http.{type Method, Get, Post}
+import gleam/dynamic/decode.{type Decoder, type Dynamic}
+import gleam/http
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 
-import pocketbase.{type PocketBase, AuthStore}
-
-pub type PbRecords(a) {
-  PbRecords(
+pub type ListResult(a) {
+  ListResult(
     page: Int,
     per_page: Int,
     total_items: Int,
     total_pages: Int,
     items: List(a),
   )
+}
+
+pub type AuthStore {
+  AuthStore(token: String)
 }
 
 pub type AuthResponse(b) {
@@ -29,45 +30,71 @@ pub type AuthError {
   AuthError(status: Int, message: String)
 }
 
-pub type RecordSubscription
-
-pub fn decode_one(
-  res: Response(Dynamic),
-  decoder: Decoder(a),
-) -> Result(a, List(decode.DecodeError)) {
-  decode.run(res.body, decoder)
+pub type PocketBase {
+  PocketBase(
+    base_url: String,
+    scheme: http.Scheme,
+    port: Int,
+    auth_store: Option(AuthStore),
+  )
 }
 
-pub fn record_list_decoder(item_decoder: Decoder(a)) -> Decoder(PbRecords(a)) {
+pub fn new(base_url: String) -> PocketBase {
+  PocketBase(base_url, http.Https, 443, None)
+}
+
+pub fn port(pb: PocketBase, port: Int) {
+  PocketBase(..pb, port: port)
+}
+
+pub fn https(pb: PocketBase, https: Bool) {
+  case https {
+    True -> PocketBase(..pb, scheme: http.Https)
+    False -> PocketBase(..pb, scheme: http.Http)
+  }
+}
+
+pub fn auth(pb: PocketBase, token: String) {
+  PocketBase(..pb, auth_store: Some(AuthStore(token)))
+}
+
+// pub fn decode_one(
+//   res: Response(Dynamic),
+//   decoder: Decoder(a),
+// ) -> Result(a, List(decode.DecodeError)) {
+//   decode.run(res.body, decoder)
+// }
+
+pub fn list_result_decoder(item_decoder: Decoder(a)) -> Decoder(ListResult(a)) {
   use page <- decode.field("page", decode.int)
   use per_page <- decode.field("perPage", decode.int)
   use total_items <- decode.field("totalItems", decode.int)
   use total_pages <- decode.field("totalPages", decode.int)
   use items <- decode.field("items", decode.list(item_decoder))
-  decode.success(PbRecords(page, per_page, total_items, total_pages, items))
+  decode.success(ListResult(page, per_page, total_items, total_pages, items))
 }
 
-pub fn decode_list(
-  res: Response(Dynamic),
-  item_decoder: Decoder(a),
-) -> Result(PbRecords(a), List(decode.DecodeError)) {
-  let decoder = {
-    use page <- decode.field("page", decode.int)
-    use per_page <- decode.field("perPage", decode.int)
-    use total_items <- decode.field("totalItems", decode.int)
-    use total_pages <- decode.field("totalPages", decode.int)
-    use items <- decode.field("items", decode.list(item_decoder))
-    decode.success(PbRecords(page, per_page, total_items, total_pages, items))
-  }
-  decode.run(res.body, decoder)
-}
+// pub fn decode_list(
+//   res: Response(Dynamic),
+//   item_decoder: Decoder(a),
+// ) -> Result(PbRecords(a), List(decode.DecodeError)) {
+//   let decoder = {
+//     use page <- decode.field("page", decode.int)
+//     use per_page <- decode.field("perPage", decode.int)
+//     use total_items <- decode.field("totalItems", decode.int)
+//     use total_pages <- decode.field("totalPages", decode.int)
+//     use items <- decode.field("items", decode.list(item_decoder))
+//     decode.success(PbRecords(page, per_page, total_items, total_pages, items))
+//   }
+//   decode.run(res.body, decoder)
+// }
 
 pub fn one(req: Request(String), record_id: String) {
   request.set_path(req, req.path <> "/" <> record_id)
 }
 
 pub fn create(req: Request(String), json_body: String) {
-  request.set_method(req, Post)
+  request.set_method(req, http.Post)
   |> request.set_body(json_body)
   |> request.set_header("content-type", "application/json")
 }
@@ -86,9 +113,9 @@ pub fn delete(req: Request(String), record_id: String, json_body: String) {
   |> request.set_path(req.path <> "/" <> record_id)
 }
 
-pub fn subscribe(req: Request(String), callback) {
-  todo
-}
+// pub fn subscribe(req: Request(String), callback) {
+//   todo
+// }
 
 pub fn collection(pb: PocketBase, name: String) {
   collection_request(pb, name)
@@ -114,7 +141,7 @@ pub fn per_page(req: Request(String), number_per_page: Int) {
   add_query(req, [#("perPage", int.to_string(number_per_page))])
 }
 
-fn build_base_request(pb: PocketBase, url: String, method: Method) {
+fn build_base_request(pb: PocketBase, url: String, method: http.Method) {
   request.new()
   |> request.set_method(method)
   |> request.set_scheme(pb.scheme)
@@ -126,7 +153,7 @@ fn build_base_request(pb: PocketBase, url: String, method: Method) {
 pub fn collection_request(pb: PocketBase, name: String) -> Request(String) {
   let url = "/api/collections/" <> name <> "/records"
 
-  let req = build_base_request(pb, url, Get)
+  let req = build_base_request(pb, url, http.Get)
 
   case pb.auth_store {
     None -> req
@@ -151,7 +178,7 @@ pub fn auth_with_password(
     ])
 
   request.set_path(req, auth_path)
-  |> request.set_method(Post)
+  |> request.set_method(http.Post)
   |> request.set_body(json.to_string(body))
   |> request.set_header("content-type", "application/json")
 }

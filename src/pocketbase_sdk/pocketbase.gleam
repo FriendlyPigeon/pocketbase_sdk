@@ -22,12 +22,13 @@ pub type AuthStore {
   AuthStore(token: String)
 }
 
-pub type AuthResponse(b) {
-  AuthResponse(token: String, record: b)
+pub type AuthSuccess(b) {
+  AuthSuccess(token: String, record: b)
 }
 
 pub type AuthError {
-  AuthError(status: Int, message: String)
+  AuthDecodeError(status: Int, message: String)
+  AuthFailure(status: Int, message: String)
 }
 
 pub type PocketBase {
@@ -183,23 +184,23 @@ pub fn auth_with_password(
   |> request.set_header("content-type", "application/json")
 }
 
-pub fn decode_auth(
+pub fn auth_response_decode(
   res: Response(Dynamic),
   auth_decoder: Decoder(b),
-) -> Result(AuthResponse(b), AuthError) {
+) -> Result(AuthSuccess(b), AuthError) {
   case res.status {
     200 -> {
       let decoder = {
         use token <- decode.field("token", decode.string)
         use record <- decode.field("record", auth_decoder)
-        decode.success(AuthResponse(token:, record:))
+        decode.success(AuthSuccess(token:, record:))
       }
       case decode.run(res.body, decoder) {
         Ok(auth) -> Ok(auth)
         Error(_) ->
-          Error(AuthError(
+          Error(AuthDecodeError(
             status: res.status,
-            message: "Failed to decode with response",
+            message: "Successful http status code, but failed to decode the response body for auth details",
           ))
       }
     }
@@ -207,12 +208,15 @@ pub fn decode_auth(
       let error_decoder = {
         use status <- decode.field("status", decode.int)
         use message <- decode.field("message", decode.string)
-        decode.success(AuthError(status:, message:))
+        decode.success(AuthFailure(status:, message:))
       }
       case decode.run(res.body, error_decoder) {
         Ok(err) -> Error(err)
         Error(_) ->
-          Error(AuthError(status: res.status, message: "Unknown error"))
+          Error(AuthDecodeError(
+            status: res.status,
+            message: "Failure http status code, but failed to decode the response body for error details",
+          ))
       }
     }
   }

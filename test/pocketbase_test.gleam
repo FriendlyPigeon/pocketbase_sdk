@@ -1,6 +1,7 @@
 import gleam/dynamic/decode
 import gleam/fetch
 import gleam/http
+import gleam/int
 import gleam/javascript/promise
 import gleam/json
 import gleam/list
@@ -296,12 +297,12 @@ pub fn post_collection_auth_with_valid_password_then_get_users_test() {
   |> promise.await(fn(result) {
     case result {
       Ok(res) -> {
-        case pocketbase.decode_auth(res, user_decoder) {
-          Ok(auth) -> {
-            assert auth.token != ""
-            assert auth.record.email == "test@example.com"
+        case pocketbase.auth_response_decode(res, user_decoder) {
+          Ok(pocketbase.AuthSuccess(token, record)) -> {
+            assert token != ""
+            assert record.email == "test@example.com"
 
-            let pb2 = pb |> pocketbase.auth(auth.token)
+            let pb2 = pb |> pocketbase.auth(token)
 
             let req2 =
               pb2
@@ -327,12 +328,12 @@ pub fn post_collection_auth_with_valid_password_then_get_users_test() {
                         Ok(first_item) -> {
                           assert first_item
                             == User(
-                              id: auth.record.id,
-                              name: auth.record.name,
-                              email: auth.record.email,
-                              created: auth.record.created,
-                              updated: auth.record.updated,
-                              avatar: auth.record.avatar,
+                              id: record.id,
+                              name: record.name,
+                              email: record.email,
+                              created: record.created,
+                              updated: record.updated,
+                              avatar: record.avatar,
                             )
                         }
 
@@ -349,8 +350,22 @@ pub fn post_collection_auth_with_valid_password_then_get_users_test() {
               }
             })
           }
-          Error(pocketbase.AuthError(status: _, message:)) ->
-            panic as { "auth failed: " <> message }
+
+          Error(pocketbase.AuthFailure(status, message)) ->
+            panic as {
+              "authentication failed with status "
+              <> int.to_string(status)
+              <> ": "
+              <> message
+            }
+
+          Error(pocketbase.AuthDecodeError(status, message)) ->
+            panic as {
+              "authentication response decode failed with status "
+              <> int.to_string(status)
+              <> ": "
+              <> message
+            }
         }
       }
 
@@ -467,14 +482,16 @@ pub fn post_collection_auth_with_invalid_password_test() {
   |> promise.map(fn(result) {
     case result {
       Ok(res) -> {
-        case pocketbase.decode_auth(res, auth_decoder) {
+        case pocketbase.auth_response_decode(res, auth_decoder) {
           Ok(_auth) -> {
             panic as "invalid password provided, authentication should fail"
           }
-          Error(pocketbase.AuthError(status:, message:)) -> {
+          Error(pocketbase.AuthFailure(status:, message:)) -> {
             assert status == 400
             assert string.contains(message, "Failed to authenticate")
           }
+          Error(_) ->
+            panic as "unexpected error decoding auth response in invalid password test, should be AuthFailure with 400 status"
         }
       }
 

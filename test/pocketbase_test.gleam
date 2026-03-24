@@ -1,13 +1,16 @@
+import fetch_sse
 import gleam/dynamic/decode
 import gleam/fetch
 import gleam/http
 import gleam/int
+import gleam/io
 import gleam/javascript/promise
 import gleam/json
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleam/string
 
+import pocketbase_sdk/internal/generated
 import pocketbase_sdk/pocketbase
 
 const base_url = "localhost"
@@ -71,6 +74,42 @@ pub fn get_collection_test() {
             }
           }
           Error(_) -> panic as "failed to decode"
+        }
+      Error(_) -> panic as "fetch failed"
+    }
+  })
+}
+
+pub fn get_collection_codegen_generated_decoder_test() {
+  let req =
+    pocketbase.new(base_url)
+    |> pocketbase.https(False)
+    |> pocketbase.port(8090)
+    |> pocketbase.collection("animals")
+    |> pocketbase.list(1, 50)
+
+  fetch.send(req)
+  |> promise.try_await(fetch.read_json_body)
+  |> promise.map(fn(result) {
+    case result {
+      Ok(res) ->
+        case
+          decode.run(
+            res.body,
+            pocketbase.list_result_decoder(generated.animal_decoder()),
+          )
+        {
+          Ok(pocketbase.ListResult(page:, total_items:, items:, ..)) -> {
+            assert page == 1
+            assert total_items == 3
+            case list.first(items) {
+              Ok(first_item) -> {
+                assert first_item.name == "lion"
+              }
+              Error(Nil) -> panic as "expected 3 items, found none"
+            }
+          }
+          Error(_) -> panic as "failed to decode generated animal list"
         }
       Error(_) -> panic as "fetch failed"
     }
@@ -498,4 +537,86 @@ pub fn post_collection_auth_with_invalid_password_test() {
       Error(_) -> panic as "auth post failed in test"
     }
   })
+}
+
+pub fn get_realtime_connect_test() {
+  let req =
+    pocketbase.new(base_url)
+    |> pocketbase.https(False)
+    |> pocketbase.port(8090)
+    |> pocketbase.collection("animals")
+    |> pocketbase.realtime_connect()
+
+  fetch.send(req)
+  |> promise.map(fn(result) {
+    case result {
+      Ok(res) -> {
+        assert res.status == 200
+      }
+      Error(_) -> panic as "fetch failed in realtime connect test"
+    }
+  })
+}
+
+// type RealtimeMessage {
+//   RealtimeMessage(client_id: String)
+// }
+
+fn pocketbase_decoder() -> decode.Decoder(String) {
+  use client_id <- decode.field("clientId", decode.string)
+  decode.success(client_id)
+}
+
+pub fn get_realtime_connect_client_id_test() {
+  let req =
+    pocketbase.new(base_url)
+    |> pocketbase.https(False)
+    |> pocketbase.port(8090)
+    |> pocketbase.collection("animals")
+    |> pocketbase.realtime_connect()
+  // let assert Ok(req) = request.to("http://localhost:8090/api/realtime")
+  // let get_req = req |> request.set_method(http.Get)
+
+  fetch_sse.fetch_event_data(
+    req,
+    Some(1),
+    Some(fn(message) {
+      case decode.run(message, pocketbase_decoder()) {
+        Ok(client_id) -> {
+          io.println("Received realtime message with client id: " <> client_id)
+
+          let req2 =
+            pocketbase.new(base_url)
+            |> pocketbase.https(False)
+            |> pocketbase.port(8090)
+            |> pocketbase.collection("animals")
+            |> pocketbase.realtime_set_subscriptions(client_id, [
+              "animals/*",
+            ])
+
+          fetch.send(req2)
+          |> promise.try_await(fetch.read_json_body)
+          |> promise.map(fn(result) {
+            case result {
+              Ok(res) -> {
+                assert res.status == 207
+              }
+              Error(_) ->
+                panic as "fetch failed in realtime set subscriptions test"
+            }
+          })
+
+          assert client_id != ""
+        }
+        Error(_) -> panic as "failed to decode realtime message with client id"
+      }
+
+      Nil
+    }),
+    Some(fn(_error) {
+      panic as "realtime stream failed or callback assertion failed"
+    }),
+    None,
+    None,
+  )
 }

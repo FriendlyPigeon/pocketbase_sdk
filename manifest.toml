@@ -2,18 +2,23 @@
 # You typically do not need to edit this file
 
 packages = [
+  { name = "fetch_sse", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_http", "gleam_javascript", "gleam_stdlib"], source = "git", repo = "https://github.com/FriendlyPigeon/gleam_fetch_sse.git", commit = "bfe75975a2725aa4213b252c0cabeb4ab718b825" },
+  { name = "glam", version = "2.0.3", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glam", source = "hex", outer_checksum = "237C2CE218A2A0A5D46D625F8EF5B78F964BC91018B78D692B17E1AB84295229" },
   { name = "gleam_fetch", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "gleam_fetch", source = "hex", outer_checksum = "2CBF9F2E1C71AEBBFB13A9D5720CD8DB4263EB02FE60C5A7A1C6E17B0151C20C" },
   { name = "gleam_http", version = "4.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_http", source = "hex", outer_checksum = "82EA6A717C842456188C190AFB372665EA56CE13D8559BF3B1DD9E40F619EE0C" },
   { name = "gleam_javascript", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_javascript", source = "hex", outer_checksum = "EF6C77A506F026C6FB37941889477CD5E4234FCD4337FF0E9384E297CB8F97EB" },
   { name = "gleam_json", version = "3.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_json", source = "hex", outer_checksum = "44FDAA8847BE8FC48CA7A1C089706BD54BADCC4C45B237A992EDDF9F2CDB2836" },
   { name = "gleam_stdlib", version = "0.70.0", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "86949BF5D1F0E4AC0AB5B06F235D8A5CC11A2DFC33BF22F752156ED61CA7D0FF" },
+  { name = "gleamgen", version = "0.3.6", build_tools = ["gleam"], requirements = ["glam", "gleam_stdlib"], otp_app = "gleamgen", source = "hex", outer_checksum = "3D594E2153A4D0407A8E6BD8CA6EA45FD4A6A14F786EB547425550FD9B60BAE5" },
   { name = "gleeunit", version = "1.9.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "DA9553CE58B67924B3C631F96FE3370C49EB6D6DC6B384EC4862CC4AAA718F3C" },
 ]
 
 [requirements]
+fetch_sse = { git = "https://github.com/FriendlyPigeon/gleam_fetch_sse.git", ref = "bfe7597" }
 gleam_fetch = { version = ">= 1.3.0 and < 2.0.0" }
 gleam_http = { version = ">= 4.3.0 and < 5.0.0" }
 gleam_javascript = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_json = { version = ">= 3.1.0 and < 4.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
+gleamgen = { version = ">= 0.3.6 and < 1.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }

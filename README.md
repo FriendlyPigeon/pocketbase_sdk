@@ -9,6 +9,26 @@ gleam add pocketbase_sdk@1
 
 ## Usage
 
+### Generate types and decoders from exported PocketBase schema
+
+After adding this package to your project, you can generate a Gleam module from an exported PocketBase schema JSON file:
+
+```sh
+gleam run -m pocketbase_sdk -- pb_schema.json src/pocketbase_sdk/generated.gleam
+```
+
+- First argument: path to exported PocketBase schema JSON
+- Second argument (optional): output `.gleam` path
+- Default output path: `src/pocketbase_sdk/generated.gleam`
+
+Then import the generated module and use the generated decoder with `pocketbase.list_result_decoder`:
+
+```gleam
+import pocketbase_sdk/generated
+
+let decoder = generated.animal_decoder()
+```
+
 ### NOTE: This library is very much in active development and should not be used in a production project yet
 
 This package provides two modules:

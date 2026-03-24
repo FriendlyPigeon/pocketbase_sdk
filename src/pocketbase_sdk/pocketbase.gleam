@@ -222,6 +222,31 @@ pub fn auth_response_decode(
   }
 }
 
+pub fn realtime_connect(req: Request(String)) {
+  request.set_method(req, http.Get)
+  |> request.set_path("/api/realtime")
+  |> request.set_header("Accept", "text/event-stream")
+  |> request.set_header("Cache-Control", "no-cache")
+}
+
+pub fn realtime_set_subscriptions(
+  req: Request(String),
+  client_id: String,
+  subscriptions: List(String),
+) {
+  let body =
+    json.to_string(
+      json.object([
+        #("clientId", json.string(client_id)),
+        #("subscriptions", json.array(subscriptions, of: json.string)),
+      ]),
+    )
+
+  request.set_method(req, http.Get)
+  |> request.set_path("/api/realtime")
+  |> request.set_body(body)
+}
+
 pub fn list(
   req: Request(String),
   page_number: Int,
